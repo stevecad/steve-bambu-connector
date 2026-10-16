@@ -33,11 +33,11 @@ offers the actions that fit, and picks Bambu Studio's profiles for the model.
 
 | Printer | Status |
 | --- | --- |
-| H2D | Tested: status, camera, light, files, Open in Bambu Studio, Developer Mode detection, slicing (checked against Bambu Studio's own output for this printer), starting a print from STEVE |
+| H2D | Tested: status and camera, files, Open in Bambu Studio, Developer Mode detection, slicing for the installed hotends (checked against Bambu Studio's own output), printing from STEVE, and during a print: speed, light, fans, temperatures, raw G-code, pause and resume. Not yet run: home, move, switch nozzle, load/unload filament, stop from STEVE |
 | X1 / X1C / X1E, P1P / P1S, A1 / A1 mini, H2S, H2C, P2S, X2 | Should work; untested. Reports welcome |
 
-Direct control commands (temperatures, motion, starting prints) follow Bambu Studio's own source but haven't all been
-run on a printer yet; see [AGENTS.md](AGENTS.md) for what is verified.
+Commands not yet run on a printer follow Bambu Studio's own source; see [AGENTS.md](AGENTS.md) for exactly what is
+verified. This is a preview: reports from other printers are very welcome.
 
 ## The printer
 

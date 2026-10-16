@@ -72,9 +72,10 @@ startup message only.
 | CLI `--orient 1` lays the part flat; `--arrange 1` places it; plate preview is `Metadata/plate_1.png` (512 px) | Verified |
 | Bambu Connect link: `bambu-connect://import-file?path=…&name=…&version=1.1.0`; it decodes once, then parses as a query string, so values are encoded twice | Verified from Bambu Connect 2.5.0 app code |
 | `fun` bit 29 set means the printer requires signed commands | Seen set with Developer Mode off and cleared with it on (H2D); still only a hint, the printer's answer decides |
-| `project_file` payload for H2-series (`ftp:///` url, `ams_mapping`/`ams_mapping2`, `nozzle_offset_cali`, …) | Accepted on H2D 01.03.00.00 with Developer Mode: the job started (the first test then failed because of the two slicer bugs above, since fixed). A full print with the fixed slicer is still to be confirmed |
-| `print_speed` is accepted with Developer Mode on (`result: "SUCCESS"`) | Verified on H2D |
-| `set_nozzle_temp`, `set_bed_temp`, `set_ctt`, `select_extruder`, `ams_change_filament` payloads | From BambuStudio source; **unverified on a printer** |
+| `project_file` payload for H2-series (`ftp:///` url, `ams_mapping`/`ams_mapping2`, `nozzle_offset_cali`, …) | Verified on H2D 01.03.00.00 with Developer Mode (early tests failed only because of the slicer bugs above, since fixed) |
+| During a print on the H2D, through STEVE: `print_speed` (silent/standard), `ledctrl` on both chamber lights, `M106 P2` aux fan, `set_nozzle_temp` (index 0), `set_bed_temp`, `gcode_line`, `pause` and `resume` are accepted and take effect (checked in the printer's report) | Verified on H2D |
+| A full print started by `project_file` (sliced for the installed High Flow hotend, AMS A → nozzle 0) runs, with the printer's own hotend check passing | Verified on H2D |
+| `set_ctt`, `select_extruder`, `ams_change_filament`, homing/jogging G-code, `stop` | From BambuStudio source; **not yet run on a printer** |
 | X1/P1/A1 use `file:///sdcard/…` for `project_file`; P1/A1 camera on port 6000 | From ha-bambulab / OpenBambuAPI; **untested here** |
 
 When you verify something on a real printer, update this table and add a test with the captured reply.
