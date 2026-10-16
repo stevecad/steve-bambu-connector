@@ -65,8 +65,9 @@ startup message only.
 | Bambu Studio CLI chooses the nozzle only with `--filament-map-mode Manual --filament-map N` (1 = left, 2 = right); `filament_map` in a process JSON is ignored | Verified (Studio 02.08.02.61) |
 | CLI `--orient 1` lays the part flat; `--arrange 1` places it; plate preview is `Metadata/plate_1.png` (512 px) | Verified |
 | Bambu Connect link: `bambu-connect://import-file?path=…&name=…&version=1.1.0`; it decodes once, then parses as a query string, so values are encoded twice | Verified from Bambu Connect 2.5.0 app code |
-| `fun` bit 29 set means the printer requires signed commands | **Guess** (seen set with Developer Mode off; not yet seen cleared) |
-| `project_file` payload for H2-series (`ftp:///` url, `ams_mapping2`, `nozzle_offset_cali`, …) | **Unverified on a printer**: from BambuStudio source and third-party tools; test before relying on it |
+| `fun` bit 29 set means the printer requires signed commands | Seen set with Developer Mode off and cleared with it on (H2D); still only a hint, the printer's answer decides |
+| `project_file` payload for H2-series (`ftp:///` url, `ams_mapping`/`ams_mapping2`, `nozzle_offset_cali`, …) | Verified on H2D 01.03.00.00 with Developer Mode: a one-filament job from AMS A (right nozzle) started and ran |
+| `print_speed` is accepted with Developer Mode on (`result: "SUCCESS"`) | Verified on H2D |
 | `set_nozzle_temp`, `set_bed_temp`, `set_ctt`, `select_extruder`, `ams_change_filament` payloads | From BambuStudio source; **unverified on a printer** |
 | X1/P1/A1 use `file:///sdcard/…` for `project_file`; P1/A1 camera on port 6000 | From ha-bambulab / OpenBambuAPI; **untested here** |
 

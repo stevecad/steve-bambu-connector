@@ -33,7 +33,7 @@ offers the actions that fit, and picks Bambu Studio's profiles for the model.
 
 | Printer | Status |
 | --- | --- |
-| H2D | Tested: status, camera, light, files, slicing and preview, Open in Bambu Studio, Developer Mode detection |
+| H2D | Tested: status, camera, light, files, slicing and preview, Open in Bambu Studio, Developer Mode detection, starting a print from STEVE |
 | X1 / X1C / X1E, P1P / P1S, A1 / A1 mini, H2S, P2S | Should work; untested. Reports welcome |
 
 Direct control commands (temperatures, motion, starting prints) follow Bambu Studio's own source but haven't all been
