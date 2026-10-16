@@ -69,6 +69,11 @@ async function prepare() {
   printer.connect();
   for (let i = 0; !(printer.lastReportAt && printer.info); i++) {
     if (i === 6) log(`waiting for ${config.printer.name} at ${config.printer.host} (is it on, in LAN mode, and is the access code right?)…`);
+    // A pairing code lasts 10 minutes: don't sit on it while the printer can't be reached.
+    if (!steve.enrolled && i === 48) {
+      log('pairing needs the printer to answer first; check it and pair again with a new code');
+      process.exit(1);
+    }
     await sleep(2500);
   }
   const caps = printer.capabilities();
@@ -163,11 +168,20 @@ async function handleRun(message) {
     return;
   }
   steve.rememberNonce(env.nonce);
-  if (active.has(runId) || steve.hasRun(runId)) {
+  const prior = steve.runState(runId);
+  if (active.has(runId) || prior === 'done') {
     log(`run ${runId}: delivered again; already handled, ignoring the repeat`);
     return;
   }
-  steve.rememberRun(runId);
+  if (prior === 'accepted') {
+    // We had started this run when the connector stopped. Never repeat it (it could be a print); say what happened.
+    log(`run ${runId}: delivered again after a restart; reporting it failed instead of repeating it`);
+    await steve.report(runId, { state: 'failed', error: 'the connector restarted during this run; it was not repeated' })
+      .catch((e) => log('report:', e.message));
+    steve.rememberRun(runId, 'done');
+    return;
+  }
+  steve.rememberRun(runId, 'accepted');
   const who = env.requested_by?.kind || 'someone';
   // Name the STEVE documents a run carries, so the log shows what was sliced or printed.
   const docs = Object.values(env.inputs || {}).filter((v) => v && v.kind === 'file')
@@ -187,8 +201,9 @@ async function handleRun(message) {
     try {
       await steve.report(runId, { state: 'running', progress: 0 });
       await printer.ready();
+      // If a cancel arrives after the action did its work (a print already started), the honest answer is that it
+      // succeeded: the actions check for cancellation before each step that can't be undone.
       const out = (await actions.handlers[env.action](env.inputs || {}, ctx)) || {};
-      if (controller.signal.aborted) throw new Error('cancelled');
       await steve.report(runId, { state: 'succeeded', result: out.result || {}, message: out.message || 'Done' });
       log(`run ${runId}: ${env.action} succeeded${out.message ? ` (${out.message})` : ''}`);
       onPrinterChange();
@@ -199,6 +214,7 @@ async function handleRun(message) {
         .catch((err) => log('report:', err.message));
     } finally {
       active.delete(runId);
+      steve.rememberRun(runId, 'done');
     }
   })();
 }
@@ -227,9 +243,10 @@ async function publishPanel() {
       title: config.panel?.title || config.printer.name,
       placement: config.panel?.placement || ['right'],
     });
-    if (steve.state.panel_hash === hash) return;
-    const r = await steve.publishPanel(config.panel?.name || 'printer', panel);
-    steve.state.panel_hash = hash;
+    const name = config.panel?.name || 'printer';
+    if (steve.state.panel_hash === `${name}:${hash}`) return;
+    const r = await steve.publishPanel(name, panel);
+    steve.state.panel_hash = `${name}:${hash}`;
     steve.saveState();
     log(`published the panel "${r.name || 'printer'}" (version ${r.version ?? '?'})`);
   } catch (e) {
@@ -247,7 +264,8 @@ async function main() {
   }
   await prepare();
   if (!steve.enrolled) {
-    const r = await steve.enroll(code.trim(), config.name || `Bambu ${config.printer.name}`, version, catalog);
+    const name = config.name || (/^bambu/i.test(config.printer.name) ? config.printer.name : `Bambu ${config.printer.name}`);
+    const r = await steve.enroll(code.trim(), name, version, catalog);
     log(`enrolled as ${r.connector}`);
   }
   console.log('\n  Connector fingerprint (confirm this exact value in STEVE):\n');
@@ -264,7 +282,7 @@ async function main() {
         log('waiting for the connector to be confirmed in STEVE…');
         await sleep(60000);
       } else if (e.status === 403) {
-        log(`STEVE refused this connector: ${e.message}. Revoked? Delete ${path.join(DATA, 'state.json')} and pair again.`);
+        log(`STEVE refused this connector: ${e.message}. Revoked? Delete ${path.join(DATA, 'state.json')} and ${path.join(DATA, 'key.pem')}, then pair again.`);
         process.exit(1);
       } else {
         log(`token: ${e.message}; retrying`);
@@ -273,7 +291,16 @@ async function main() {
     }
   }
   log('confirmed by STEVE');
-  await steve.putCatalog(catalog);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await steve.putCatalog(catalog);
+      break;
+    } catch (e) {
+      if (e.status === 403 || attempt >= 10) throw e;
+      log(`catalog not sent (${e.message}); retrying`);
+      await sleep(Math.min(60000, 2000 * attempt));
+    }
+  }
   await publishPanel();
 
   let backoff = 1000;

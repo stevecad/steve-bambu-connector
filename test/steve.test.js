@@ -86,6 +86,8 @@ test('refuses runs that fail any check', async () => {
   assert.match(await s.check(message(envelope({ connector: 'SHA256:someone-else' })), ['status']), /another connector/);
   assert.match(await s.check(message(envelope({ action: 'format_disk' })), ['status']), /unknown action/);
   assert.match(await s.check(message(envelope({ expires_at: new Date(Date.now() - 1000).toISOString() })), ['status']), /expired/);
+  assert.match(await s.check(message(envelope({ expires_at: undefined })), ['status']), /expired/, 'no expiry is not "never expires"');
+  assert.match(await s.check(message(envelope({ nonce: undefined })), ['status']), /no nonce/);
   const seen = envelope();
   s.rememberNonce(seen.nonce);
   assert.match(await s.check(message(seen), ['status']), /replayed/);
@@ -99,4 +101,8 @@ test('remembers handled runs, across restarts', () => {
   assert.equal(a.hasRun('run_1'), true);
   const b = new Steve({ baseUrl: 'https://example.test/connect/v1', dataDir: dir, log: () => {} });
   assert.equal(b.hasRun('run_1'), true, 'a restart does not forget a run it already acted on');
+  assert.equal(b.runState('run_1'), 'accepted');
+  b.rememberRun('run_1', 'done');
+  assert.equal(new Steve({ baseUrl: 'https://example.test/connect/v1', dataDir: dir, log: () => {} }).runState('run_1'), 'done');
+  assert.ok(!fs.existsSync(path.join(dir, 'state.json.tmp')), 'state is written through a temp file that is renamed away');
 });

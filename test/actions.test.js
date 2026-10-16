@@ -9,9 +9,9 @@ const NAME = /^[a-z][a-z0-9_.-]{0,39}$/;
 const INPUT = /^[a-z][a-z0-9_]{0,39}$/;
 const single = { model: 'Bambu Lab X1 Carbon', dual: false, chamberHeater: false, nozzleDiameter: 0.4, sdcardPrinting: true, camera: 'rtsp', chamberLights: ['chamber_light'] };
 
-// A minimal sliced project: two filaments, filament 1 used on plate 1, mapped to the right nozzle.
+// A minimal sliced project: two filaments, filament 1 used on plate 1, on filament map 1 (nozzle 0, fed by AMS A).
 function slicedProject() {
-  const plate = `<config><plate><metadata key="index" value="1"/><metadata key="filament_maps" value="2 1"/>
+  const plate = `<config><plate><metadata key="index" value="1"/><metadata key="filament_maps" value="1 2"/>
     <filament id="1" tray_info_idx="GFA00" type="PLA" color="#8E9089"/></plate></config>`;
   return writeZip(new Map([
     ['Metadata/slice_info.config', Buffer.from(plate)],
@@ -113,8 +113,9 @@ test('slicing puts the filament on the nozzle its slot feeds, tinted with the sl
   const a = actionsFor(fakePrinter());
   await a.slicePart({ model: { name: 'Part.3mf' }, slot: 'B2', upload: false }, ctx(), false);
   await a.slicePart({ model: { name: 'Part.3mf' }, slot: 'A3', upload: false, orient: true }, ctx(), false);
-  assert.equal(a.slicer.calls[0].filamentMap, 1, 'B feeds the left nozzle: slicer extruder 1');
-  assert.equal(a.slicer.calls[1].filamentMap, 2, 'A feeds the right nozzle: slicer extruder 2');
+  // Bambu Studio's filament map 1 is nozzle 0 and map 2 is nozzle 1 (checked against a Studio-sliced H2D job).
+  assert.equal(a.slicer.calls[0].filamentMap, 2, 'AMS B feeds nozzle 1: filament map 2');
+  assert.equal(a.slicer.calls[1].filamentMap, 1, 'AMS A feeds nozzle 0: filament map 1');
   assert.deepEqual(a.slicer.calls[1].filamentOverrides, { filament_colour: ['#8E9089'] });
   assert.equal(a.slicer.calls[1].orient, true);
 });
@@ -156,7 +157,7 @@ test('printing is refused while the printer is busy or paused', async () => {
   }
 });
 
-test('print_file matches project filaments to AMS slots on the right nozzle and sends project_file', async () => {
+test('print_file matches project filaments to AMS slots on the nozzle they were sliced for, and sends project_file', async () => {
   const p = fakePrinter();
   p.download = async () => slicedProject();
   const a = actionsFor(p);
@@ -197,4 +198,36 @@ test('open_in_studio saves the part and opens it in Bambu Studio', async () => {
   const out = await a.openInStudio({ model: { name: 'Bracket v2.3mf' } }, ctx());
   assert.match(out.result.file, /Bracket_v2\.3mf$/);
   assert.equal(a.slicer.opened, out.result.file);
+});
+
+test('a print command the printer never answers, with no job started, is not reported as success', async () => {
+  const p = fakePrinter({ reply: (cmd) => (cmd.print?.command === 'project_file' ? null : { result: 'success' }) });
+  p.download = async () => slicedProject();
+  const a = actionsFor(p);
+  p.command = ((orig) => (payload, ms) => orig.call(p, payload, payload.print?.command === 'project_file' ? 20 : ms))(p.command);
+  await assert.rejects(a.printFile({ path: '/job.gcode.3mf' }, ctx()), /didn't answer/);
+});
+
+test('a cancel before the print command stops the print from starting', async () => {
+  const p = fakePrinter();
+  p.download = async () => slicedProject();
+  const a = actionsFor(p);
+  const c = ctx();
+  const controller = new AbortController();
+  c.signal = controller.signal;
+  controller.abort();
+  await assert.rejects(a.printFile({ path: '/job.gcode.3mf' }, c), /cancelled/);
+  assert.ok(!p.sent.some((m) => m.print?.command === 'project_file'), 'project_file was never sent');
+});
+
+test('two print starts at once: the second is refused instead of starting a second job', async () => {
+  const p = fakePrinter();
+  let release;
+  p.download = () => new Promise((r) => { release = () => r(slicedProject()); });
+  const a = actionsFor(p);
+  const first = a.printFile({ path: '/job.gcode.3mf' }, ctx());
+  await assert.rejects(a.printFile({ path: '/job.gcode.3mf' }, ctx()), /another print is being started/);
+  release();
+  await first;
+  assert.equal(p.sent.filter((m) => m.print?.command === 'project_file').length, 1);
 });

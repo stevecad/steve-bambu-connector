@@ -17,11 +17,11 @@ in), and talks to the printer over the LAN.
 
 | | Open in Bambu Studio | Slice & preview → Print this | Bambu Connect |
 | --- | --- | --- | --- |
-| How | Opens the part in Bambu Studio on your computer; you check it and press Studio's Print | The connector slices, shows the plate, time, filament and a bed photo; you press Print this | The connector slices and hands the file to Bambu Connect; you confirm there |
+| How | Opens the part in Bambu Studio on your computer; you check it and press Studio's Print | The connector slices, shows the plate, time, filament and a bed photo; you press Print this | Slice & preview, then **Print with Bambu Connect**: the connector hands the file to Bambu Connect; you confirm there |
 | You see placement first | Yes, fully editable | Yes, preview picture | In Bambu Connect |
 | Needs Developer Mode | No | **Yes** | No |
 | Extra prompts | None beyond Studio | None | Bambu Connect asks every time |
-| Setting | always available | default (`print_via: "direct"`) | `print_via: "bambu_connect"` |
+| Setting | when Bambu Studio is installed | default (`print_via: "direct"`) | `print_via: "bambu_connect"` (Windows and macOS) |
 
 Open in Bambu Studio is the safest: you see and can fix everything before printing, and the print goes through
 Bambu's own app. Slice & preview is for one-click printing from STEVE once you have turned on Developer Mode.
@@ -33,8 +33,8 @@ offers the actions that fit, and picks Bambu Studio's profiles for the model.
 
 | Printer | Status |
 | --- | --- |
-| H2D | Tested: status, camera, light, files, slicing and preview, Open in Bambu Studio, Developer Mode detection, starting a print from STEVE |
-| X1 / X1C / X1E, P1P / P1S, A1 / A1 mini, H2S, P2S | Should work; untested. Reports welcome |
+| H2D | Tested: status, camera, light, files, Open in Bambu Studio, Developer Mode detection, slicing (checked against Bambu Studio's own output for this printer), starting a print from STEVE |
+| X1 / X1C / X1E, P1P / P1S, A1 / A1 mini, H2S, H2C, P2S, X2 | Should work; untested. Reports welcome |
 
 Direct control commands (temperatures, motion, starting prints) follow Bambu Studio's own source but haven't all been
 run on a printer yet; see [AGENTS.md](AGENTS.md) for what is verified.
@@ -67,10 +67,15 @@ npm install
 node setup.js          # finds the printer, checks the access code, writes config.json
 ```
 
+`node setup.js --discover` (or `npm run discover`) only lists the printers it hears. On **Linux**, set
+`slicer.exe` and `slicer.profiles` in the config (Bambu Studio's install location varies), and Bambu Connect isn't
+available.
+
 Pair it with STEVE:
 
 1. In STEVE: **Settings → Developers**, turn the API on; then **Settings → Connectors → Pair a connector**.
-2. `node connector.js --pair <CODE>`. It prints its key fingerprint.
+2. `node connector.js --pair <CODE>`. It connects to the printer first (it gives up after two minutes if the printer
+   doesn't answer, so the code isn't wasted), then prints its key fingerprint.
 3. In STEVE, paste that fingerprint to confirm the connector.
 4. Allow the actions, and let them run at once for the callers you use: you, **Its panel**, the STEVE assistant and
    AI agents. Then "print this part", from a click or from an AI, just happens. (Each action can still be set to
@@ -86,14 +91,21 @@ Install it once it's paired, so it starts when you log in and restarts if it sto
 
 | System | Install | Remove |
 | --- | --- | --- |
-| Windows | `powershell -ExecutionPolicy Bypass -File service\windows\install.ps1` | `service\windows\uninstall.ps1` |
+| Windows | `powershell -ExecutionPolicy Bypass -File service\windows\install.ps1` | `powershell -ExecutionPolicy Bypass -File service\windows\uninstall.ps1` |
 | macOS | `./service/macos/install.sh` | see the comment at the top of the script |
 | Linux | `./service/linux/install.sh` | see the comment at the top of the script |
 
-Each takes the config and data folder as options (for more than one printer). They run the connector **in your
-login session**, on purpose: Open in Bambu Studio and Bambu Connect open windows on your desktop, which a background
+Options, for a second printer or other file names:
+- Windows: `install.ps1 -Config h2d.config.json -Data data-h2d -Name "STEVE Bambu H2D"` (and `uninstall.ps1 -Name …`).
+- macOS and Linux: `install.sh h2d.config.json data-h2d h2d`: config, data folder, and a name that keeps each
+  printer's service separate.
+
+They run the connector **in your login session**, on purpose: Open in Bambu Studio and Bambu Connect open windows on your desktop, which a background
 system service can't do. On Linux, `sudo loginctl enable-linger $USER` keeps it running while you're logged out
-(without the windows).
+(without the windows). The macOS and Linux services get a PATH that includes Homebrew and `/usr/local/bin`; if
+ffmpeg or Bambu Studio live elsewhere, put their full paths in the config (`ffmpeg`, `slicer.exe`).
+
+To run it by hand with automatic restarts instead: `start-connector.cmd` (Windows) or `./start-connector.sh`.
 
 Logs: `data/connector.log` (kept to 5 MB plus one older file).
 
@@ -101,9 +113,10 @@ Logs: `data/connector.log` (kept to 5 MB plus one older file).
 
 `panel/` is a tab STEVE shows beside your design: progress, camera, temperatures, AMS filament, Pause / Resume /
 Stop, speed, light, and a **This part** card: filament slot, quality, plate, supports, lay flat; **Open in Bambu
-Studio**; **Slice & preview**, then **Print this** (when Developer Mode is on).
+Studio**; **Slice & preview**, then **Print this** (with Developer Mode) or **Print with Bambu Connect** (with
+`print_via: "bambu_connect"`).
 
-The connector publishes it to STEVE when it starts, and again whenever the files in `panel/` change; STEVE lists it
+The connector publishes it to STEVE when it starts, if the files in `panel/` changed since it last did; STEVE lists it
 under the connector in Settings → Connectors, marked "by the connector". Allow the actions its buttons use for
 **Its panel**.
 
@@ -119,20 +132,20 @@ yours, in that panel, and that only the open document goes. The panel shows a re
 
 | Key | Meaning |
 | --- | --- |
-| `name` | The connector's name in STEVE |
-| `printer.name`, `host`, `serial`, `access_code` | The printer. **The access code is a secret: keep this file private** |
+| `name` | The connector's name in STEVE, sent when pairing (rename it in STEVE afterwards) |
+| `printer.name`, `host`, `serial`, `access_code` | The printer. **The access code is a secret: keep this file private.** `printer.name` is optional |
 | `print_via` | `"direct"` (default; needs Developer Mode) or `"bambu_connect"` |
 | `confirm` | Actions that wait for a person on **every** run, whoever asks. Default `[]` (none); e.g. `["send_gcode", "delete_file"]` to gate those |
 | `slicer.exe`, `slicer.profiles` | Bambu Studio's program and its `resources/profiles/BBL` folder, if not in the usual place |
 | `machine_profile` | Force a Bambu Studio machine profile, e.g. `"Bambu Lab X1 Carbon 0.4 nozzle"` |
-| `ffmpeg` | Path to ffmpeg, if it isn't on your PATH |
+| `ffmpeg` | Path to ffmpeg, if it isn't on your PATH (or the service's) |
 | `panel` | `false` to not publish the panel; or `{"title", "placement", "name"}` (defaults: the printer's name, `["right"]`, `"printer"`) |
 | `steve_url` | STEVE's connector endpoint (leave as is) |
 
 Who may run what, and whose runs ask you first, is set per action and caller in STEVE (Settings → Connectors).
 
 **More than one printer:** one connector per printer, each with its own config and data folder:
-`node connector.js --config h2d.config.json --data data-h2d` (and the same options for the service installers).
+`node connector.js --config h2d.config.json --data data-h2d`, and the service installers' options above.
 
 ## Actions
 
@@ -143,25 +156,28 @@ Who may run what, and whose runs ask you first, is set per action and caller in 
 | `open_in_studio` | Opens the part in Bambu Studio on the connector's computer |
 | `slice_part` | Slices the part; returns the plate picture, time and filament; uploads it for `print_file` |
 | `print_file` | Prints a sliced `.gcode.3mf` on the printer (such as the one `slice_part` uploaded), matching filaments to AMS slots |
-| `print_part` | Slices and prints in one step, without a preview |
+| `print_part` | Slices and prints in one step, without a preview (direct, or through Bambu Connect) |
 | `pause`, `resume`, `stop`, `set_speed` | The current print |
 | `set_light`, `set_fan`, `set_temperature` | Chamber light; part, aux and chamber fans; nozzle(s), bed, chamber |
 | `home`, `move`, `select_nozzle` | Motion; the active nozzle on two-nozzle printers |
-| `load_filament`, `unload_filament` | From an AMS slot (`A1`…`D4`) or external spool |
+| `load_filament`, `unload_filament` | Load from an AMS slot (`A1`…`D4`) or external spool; unload a nozzle |
 | `list_files`, `delete_file` | The printer's storage |
 | `send_gcode`, `send_command` | Raw G-code; a raw Bambu MQTT command object |
 
-Events: `status` (when something changes, throttled) and `alert` (print started / finished / failed / paused, new
-printer errors).
+Events: `status` (when something changes, throttled, and at least once a minute) and `alert` (print started /
+resumed / paused / finished / failed, new printer errors).
 
 ## Security
 
-- The connector's private key is `data/key.pem`; STEVE knows only its public key. Every request is signed, and every
-  run from STEVE is checked against STEVE's signing keys before anything happens.
+- The connector's private key is `data/key.pem`; STEVE knows only its public key. Every request to STEVE's connector
+  API is signed, and every run from STEVE is checked (STEVE's signature, expiry, a one-time nonce, and that it's for
+  this connector) before anything happens. Each run is carried out once, even if it's delivered twice.
 - `config.json` holds the access code. `config*.json` and `data*/` are in `.gitignore`.
 - Bambu printers use self-signed certificates on the LAN, so the connector doesn't verify the printer's TLS
   certificate.
-- Prints start only when the printer is idle. Safety interlocks belong to the printer.
+- `print_part` and `print_file` start a print only when the printer is idle, one at a time. Every sliced file is
+  checked before use: it must be for this printer model, use its start G-code, and put the filament on the nozzle
+  its AMS slot feeds. (`send_gcode` and `send_command` do what they're told.) Safety interlocks belong to the printer.
 
 ## Troubleshooting
 

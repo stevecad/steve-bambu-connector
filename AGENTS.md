@@ -36,18 +36,18 @@ the printer. It talks to:
 
 People choose how they print. Keep all three working and keep them distinct.
 
-1. **Open in Bambu Studio** (`open_in_studio`), the default and safest path. The connector saves the STEVE 3MF and
+1. **Open in Bambu Studio** (`open_in_studio`), the safest path and the one that works without Developer Mode. The connector saves the STEVE 3MF and
    opens it in Bambu Studio's window on the connector's computer. The person checks placement, orientation,
    supports and filament mapping, and prints with Studio's own Print button. No Developer Mode, no reverse-engineered
    print command. It opens on the computer that runs the connector, so the connector must run in that person's
    desktop session (see Service).
 2. **Slice & preview, then Print this** (`slice_part` then `print_file`): direct printing, needs **Developer Mode**.
-   `slice_part` slices with the Bambu Studio CLI, returns the plate picture (`preview_png_base64`), time and
+   `slice_part` slices with the Bambu Studio CLI, returns the plate picture (run file `plate.png`), time and
    filament, and uploads the file to the printer. `print_file` prints exactly that file (no re-slice) after the person
    has seen the preview and a fresh camera photo of the bed. `print_part` does both in one step without a preview, for
    API/agent use.
-3. **Bambu Connect** (`"print_via": "bambu_connect"`): for people who won't enable Developer Mode but want to start
-   prints from STEVE. Bambu Connect asks the person to confirm every print; that's Bambu's design. Never automate
+3. **Bambu Connect** (`"print_via": "bambu_connect"`, Windows and macOS): for people who won't enable Developer Mode
+   but want to start prints from STEVE. The panel's preview then offers **Print with Bambu Connect** (`print_part`). Bambu Connect asks the person to confirm every print; that's Bambu's design. Never automate
    clicking through it.
 
 `print_via` is `"direct"` (default) or `"bambu_connect"`. Direct printing is refused up front only after the printer
@@ -61,12 +61,15 @@ startup message only.
 | Firmware with Bambu's authorization control refuses unsigned `print` commands with `result: "failed"`, `reason: "mqtt message verify failed"`, `err_code: 84033543`, and shows HMS `0500-0500-0001-0007` | Verified on H2D 01.03.00.00 |
 | `system` commands (`ledctrl`) are accepted without Developer Mode; status, FTPS and camera work without it | Verified on H2D |
 | H2D packs heaters as `target << 16 \| current` in `device.extruder.info[].temp`, `device.bed.info.temp`, `device.ctc.info.temp` | Verified |
-| H2D: extruder index 0 is the right nozzle, 1 the left; AMS `info` bits 8-11 give the nozzle an AMS feeds (here A → right, B → left) | Verified |
-| Bambu Studio CLI chooses the nozzle only with `--filament-map-mode Manual --filament-map N` (1 = left, 2 = right); `filament_map` in a process JSON is ignored | Verified (Studio 02.08.02.61) |
+| H2D: AMS `info` bits 8-11 give the nozzle (extruder index 0 or 1) an AMS feeds; on the test printer AMS A feeds 0, AMS B feeds 1 | Verified |
+| H2D: extruder index 0 is the right nozzle ("main"), 1 the left | From BambuStudio source; **unverified** (only affects labels and `set_nozzle_temp`) |
+| Bambu Studio CLI chooses the nozzle only with `--filament-map-mode Manual --filament-map N`, where **map 1 = nozzle 0, map 2 = nozzle 1**; `filament_map` in a process JSON is ignored | Verified against a Bambu Studio-sliced job that printed on the H2D (AMS B filament, map 2, `<nozzle id="1">`). An earlier version assumed 1 = left / 2 = right and sliced onto the wrong nozzle |
+| System profiles pull G-code from template files with `"include"` (the H2D's start, end, filament-change, layer-change and timelapse G-code). They must be resolved, between the parent's settings and the profile's own | Verified: skipping `include` produced another printer's start G-code and a failed print; `Slicer.checkOutput` now refuses such a file |
+| CLI output matches Bambu Studio's own for the H2D machine settings, apart from differences between Studio versions (newer template dates, more nozzle variants) | Verified by comparing `project_settings.config` |
 | CLI `--orient 1` lays the part flat; `--arrange 1` places it; plate preview is `Metadata/plate_1.png` (512 px) | Verified |
 | Bambu Connect link: `bambu-connect://import-file?path=…&name=…&version=1.1.0`; it decodes once, then parses as a query string, so values are encoded twice | Verified from Bambu Connect 2.5.0 app code |
 | `fun` bit 29 set means the printer requires signed commands | Seen set with Developer Mode off and cleared with it on (H2D); still only a hint, the printer's answer decides |
-| `project_file` payload for H2-series (`ftp:///` url, `ams_mapping`/`ams_mapping2`, `nozzle_offset_cali`, …) | Verified on H2D 01.03.00.00 with Developer Mode: a one-filament job from AMS A (right nozzle) started and ran |
+| `project_file` payload for H2-series (`ftp:///` url, `ams_mapping`/`ams_mapping2`, `nozzle_offset_cali`, …) | Accepted on H2D 01.03.00.00 with Developer Mode: the job started (the first test then failed because of the two slicer bugs above, since fixed). A full print with the fixed slicer is still to be confirmed |
 | `print_speed` is accepted with Developer Mode on (`result: "SUCCESS"`) | Verified on H2D |
 | `set_nozzle_temp`, `set_bed_temp`, `set_ctt`, `select_extruder`, `ams_change_filament` payloads | From BambuStudio source; **unverified on a printer** |
 | X1/P1/A1 use `file:///sdcard/…` for `project_file`; P1/A1 camera on port 6000 | From ha-bambulab / OpenBambuAPI; **untested here** |
@@ -84,6 +87,12 @@ When you verify something on a real printer, update this table and add a test wi
 - **Act on each run once.** STEVE can deliver the same run in more than one message, each freshly signed, so the
   nonce check alone doesn't catch it; the connector keeps the ids of runs it has accepted (`Steve.hasRun`). Never
   remove that: a repeated print run would start a second print.
+- **Never print a sliced file that fails `Slicer.checkOutput`** (wrong printer model, start G-code that isn't the
+  resolved profile's, or filament on a nozzle its AMS can't feed). When you change slicing, compare the output's
+  `Metadata/project_settings.config` with a file Bambu Studio sliced for the same printer before printing it.
+- **One print start at a time, and cancel means cancel.** `Actions.exclusive` serializes print starts;
+  `stopIfCancelled` runs before each step and right before `project_file`. A restart mid-run reports the run
+  failed (`runState` "accepted") instead of repeating it.
 - **Report the printer's answer honestly.** A refused command is a failed run with the reason, never "succeeded".
 - **Secrets**: the access code lives only in `config*.json`; the private key only in `data*/key.pem`. Never log,
   return or put them in an event. Redact them from error text (see `rtspSnapshot`).
@@ -110,7 +119,8 @@ npm test        # node:test, no printer or network needed
 npm run check   # syntax check of every file
 ```
 
-`test/helpers.js` builds a `Printer` from the sanitized H2D report with a fake MQTT client whose replies you choose
+`test/slicer.test.js` covers profile resolution (`include`) and `checkOutput` without Bambu Studio. `test/helpers.js`
+builds a `Printer` from the sanitized H2D report with a fake MQTT client whose replies you choose
 (`refuse` gives the real refusal). Add tests for every behaviour change.
 
 Live checklist on a real printer (Developer Mode on, bed clear): status; snapshot; light; fan; each heater (then 0);
@@ -125,8 +135,11 @@ daemon), because `open_in_studio` and Bambu Connect open windows.
 
 - Windows: `service\windows\install.ps1` registers a scheduled task at logon (hidden through `conhost --headless`,
   restarted by `start-connector.cmd`'s loop and the task's restart policy). `uninstall.ps1` removes it.
-- macOS: `service/macos/install.sh` installs a LaunchAgent with `KeepAlive`.
-- Linux: `service/linux/install.sh` installs a systemd **user** unit with `Restart=always`.
+- macOS: `service/macos/install.sh [config] [data] [name]` installs a LaunchAgent with `KeepAlive` and a PATH that
+  includes Homebrew (stdout goes to /dev/null; the connector keeps its own rotated log).
+- Linux: `service/linux/install.sh [config] [data] [name]` installs a systemd **user** unit with `Restart=always`
+  (arguments quoted for systemd). Bambu Connect has no Linux version.
+- The optional name keeps several printers' services apart (Windows: `-Name`).
 
 Logs: `data/connector.log` (5 MB, one rotated copy).
 

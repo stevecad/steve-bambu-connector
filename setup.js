@@ -68,7 +68,10 @@ function check(host, serial, accessCode) {
 }
 
 async function main() {
-  const configPath = path.resolve(process.argv.includes('--config') ? process.argv[process.argv.indexOf('--config') + 1] : 'config.json');
+  // The same default as connector.js: config.json next to the program, wherever you run this from.
+  const configPath = process.argv.includes('--config')
+    ? path.resolve(process.argv[process.argv.indexOf('--config') + 1])
+    : path.join(__dirname, 'config.json');
   console.log('Listening for Bambu printers on the network…');
   const printers = await discover();
   printers.forEach((p, i) => console.log(`  ${i + 1}. ${p.name} — ${p.model} at ${p.host} (serial ${p.serial}, ${p.mode} mode)`));
@@ -98,7 +101,10 @@ async function main() {
       result = await check(p.host, p.serial, accessCode);
       if (result.ok) { console.log(`connected to ${result.model}.`); break; }
       console.log(result.error + '.');
-      if (/^n/i.test(await rl.question('Try again? [Y/n] '))) break;
+      if (/^n/i.test(await rl.question('Try again? [Y/n] '))) {
+        if (!/^y/i.test(await rl.question('The printer did not accept that code. Save the config anyway? [y/N] '))) return;
+        break;
+      }
     }
 
     const config = {

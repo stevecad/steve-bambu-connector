@@ -11,13 +11,22 @@ const defs = new Map();       // action name -> its definition (inputs)
 let doc = null;               // the STEVE document open now, when the panel may send it
 let sliced = null;            // the last slice_part result for this document: what "Print this" prints
 const ENDED = ['succeeded', 'failed', 'rejected', 'cancelled', 'expired'];
-const PRINT_CARD = ['slice_part', 'open_in_studio', 'print_file'];
+const PRINT_CARD = ['slice_part', 'open_in_studio', 'print_file', 'print_part'];
 const $ = (id) => document.getElementById(id);
 
-function call(method, params = {}) {
+// Asks STEVE something; gives up after timeoutMs so a lost answer can't leave a button stuck.
+function call(method, params = {}, timeoutMs = 30000) {
   const id = ++next;
   window.parent.postMessage({ steve: 1, id, method, params }, '*');
-  return new Promise((resolve, reject) => waiting.set(id, { resolve, reject }));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (waiting.delete(id)) reject({ code: 'timeout', message: `STEVE didn't answer (${method})` });
+    }, timeoutMs);
+    waiting.set(id, {
+      resolve: (v) => { clearTimeout(timer); resolve(v); },
+      reject: (e) => { clearTimeout(timer); reject(e); },
+    });
+  });
 }
 
 window.addEventListener('message', (event) => {
@@ -83,8 +92,9 @@ function fmtMin(m) {
 
 function temp(label, h) {
   if (!h || h.current == null) return '';
-  const tg = h.target ? `→ ${h.target}°` : 'off';
-  return `<div class="temp"><div class="label">${label}</div><div class="t">${Math.round(h.current)}°</div><div class="tg">${tg}</div></div>`;
+  const target = Number(h.target), current = Number(h.current);
+  const tg = target ? `→ ${Math.round(target)}°` : 'off';
+  return `<div class="temp"><div class="label">${esc(label)}</div><div class="t">${Math.round(current)}°</div><div class="tg">${tg}</div></div>`;
 }
 
 function esc(s) {
@@ -207,7 +217,10 @@ function showPreview(result, runId) {
   $('estimate').textContent = `${fmtMin(result.time_min)} · ${result.filament_g} g`;
   $('estimateDetail').textContent = [result.slot, (result.quality || '').replace(/\s*@.*$/, ''), result.plate,
     result.laid_flat ? 'laid flat' : null].filter(Boolean).join(' · ') + (result.warning ? ` — ${result.warning}` : '');
-  const printable = Boolean(result.printer_file) && canPrintHere();
+  // Bambu Connect mode: printing hands the part to Bambu Connect (print_part), which asks the person there.
+  const viaConnect = result.print_via === 'bambu_connect' && allowed.has('print_part');
+  const printable = viaConnect || (Boolean(result.printer_file) && canPrintHere());
+  $('btnPrintThis').textContent = viaConnect ? 'Print with Bambu Connect' : 'Print this';
   $('btnPrintThis').hidden = !printable;
   $('bedNote').hidden = !printable;
   $('printNote').hidden = printable;
@@ -236,7 +249,9 @@ function refreshButtons() {
   const working = PRINT_CARD.some((a) => busy.has(a));
   $('btnStudio').disabled = !doc || working || !allowed.has('open_in_studio');
   $('btnSlice').disabled = !doc || working || !allowed.has('slice_part');
-  $('btnPrintThis').disabled = !sliced?.printer_file || working || !canPrintHere() || !idle || !status?.connected;
+  const viaConnect = sliced?.print_via === 'bambu_connect' && allowed.has('print_part');
+  $('btnPrintThis').disabled = working || busy.has('print_part') || !idle || !status?.connected ||
+    !(viaConnect || (sliced?.printer_file && canPrintHere()));
 }
 
 function say(text) {
@@ -309,8 +324,8 @@ $('btnStudio').addEventListener('click', () => {
 });
 $('btnSlice').addEventListener('click', () => { clearPreview(); run('slice_part', sliceInputs()); });
 $('btnPrintThis').addEventListener('click', () => {
-  if (!sliced?.printer_file) return;
-  run('print_file', { path: sliced.printer_file, slots: sliced.slot, plate: 1 });
+  if (sliced?.print_via === 'bambu_connect') run('print_part', sliceInputs());
+  else if (sliced?.printer_file) run('print_file', { path: sliced.printer_file, slots: sliced.slot, plate: 1 });
 });
 
 // Stop asks twice: the first click arms it for 4 seconds.
