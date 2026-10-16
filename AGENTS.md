@@ -65,6 +65,9 @@ startup message only.
 | H2D: extruder index 0 is the right nozzle ("main"), 1 the left | From BambuStudio source; **unverified** (only affects labels and `set_nozzle_temp`) |
 | Bambu Studio CLI chooses the nozzle only with `--filament-map-mode Manual --filament-map N`, where **map 1 = nozzle 0, map 2 = nozzle 1**; `filament_map` in a process JSON is ignored | Verified against a Bambu Studio-sliced job that printed on the H2D (AMS B filament, map 2, `<nozzle id="1">`). An earlier version assumed 1 = left / 2 = right and sliced onto the wrong nozzle |
 | System profiles pull G-code from template files with `"include"` (the H2D's start, end, filament-change, layer-change and timelapse G-code). They must be resolved, between the parent's settings and the profile's own | Verified: skipping `include` produced another printer's start G-code and a failed print; `Slicer.checkOutput` now refuses such a file |
+| Hotend codes per nozzle (`device.nozzle.info[].type`, e.g. `HH05`): 2nd letter = flow (S Standard, H High Flow, U TPU High Flow, B E3D High Flow), digits 3-4 = material (00 stainless, 01 hardened steel, 05 tungsten carbide) | From BambuStudio `DevNozzleSystem.cpp` (`s_parse_nozzle_type`) |
+| The H2D checks the sliced hotend against the installed one at start and pauses with `05FF8053` ("nozzle not matched") if they differ (e.g. sliced Standard, installed High Flow) | Verified on H2D |
+| The CLI slices for a hotend type when the machine profile's `default_nozzle_volume_type` is set per extruder (`["High Flow","High Flow"]`); `slice_info` then says `volume_type="High Flow"` | Verified (Studio 02.08.02.61) |
 | CLI output matches Bambu Studio's own for the H2D machine settings, apart from differences between Studio versions (newer template dates, more nozzle variants) | Verified by comparing `project_settings.config` |
 | CLI `--orient 1` lays the part flat; `--arrange 1` places it; plate preview is `Metadata/plate_1.png` (512 px) | Verified |
 | Bambu Connect link: `bambu-connect://import-file?path=…&name=…&version=1.1.0`; it decodes once, then parses as a query string, so values are encoded twice | Verified from Bambu Connect 2.5.0 app code |
@@ -90,6 +93,9 @@ When you verify something on a real printer, update this table and add a test wi
 - **Never print a sliced file that fails `Slicer.checkOutput`** (wrong printer model, start G-code that isn't the
   resolved profile's, or filament on a nozzle its AMS can't feed). When you change slicing, compare the output's
   `Metadata/project_settings.config` with a file Bambu Studio sliced for the same printer before printing it.
+- **Check what's in the machine, never assume.** Slice for the hotends the printer reports (`Printer.hotends`,
+  `Actions.hotendOverrides`), refuse unknown hotend codes, and run `Actions.verifyPrint` before every print: printer
+  model, each nozzle's hotend (flow and diameter), and each filament's slot (loaded, same material, feeds that nozzle).
 - **One print start at a time, and cancel means cancel.** `Actions.exclusive` serializes print starts;
   `stopIfCancelled` runs before each step and right before `project_file`. A restart mid-run reports the run
   failed (`runState` "accepted") instead of repeating it.

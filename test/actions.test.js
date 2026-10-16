@@ -10,13 +10,14 @@ const INPUT = /^[a-z][a-z0-9_]{0,39}$/;
 const single = { model: 'Bambu Lab X1 Carbon', dual: false, chamberHeater: false, nozzleDiameter: 0.4, sdcardPrinting: true, camera: 'rtsp', chamberLights: ['chamber_light'] };
 
 // A minimal sliced project: two filaments, filament 1 used on plate 1, on filament map 1 (nozzle 0, fed by AMS A).
-function slicedProject() {
+function slicedProject({ flow = 'High Flow', model = 'Bambu Lab H2D' } = {}) {
   const plate = `<config><plate><metadata key="index" value="1"/><metadata key="filament_maps" value="1 2"/>
-    <filament id="1" tray_info_idx="GFA00" type="PLA" color="#8E9089"/></plate></config>`;
+    <filament id="1" tray_info_idx="GFA00" type="PLA" color="#8E9089"/>
+    <nozzle id="0" extruder_id="1" nozzle_diameter="0.4" volume_type="${flow}"/></plate></config>`;
   return writeZip(new Map([
     ['Metadata/slice_info.config', Buffer.from(plate)],
     ['Metadata/project_settings.config', Buffer.from(JSON.stringify({
-      filament_type: ['PLA', 'PETG'], filament_colour: ['#8E9089', '#F98C36'], filament_ids: ['GFA00', 'GFG99'] }))],
+      printer_model: model, filament_type: ['PLA', 'PETG'], filament_colour: ['#8E9089', '#F98C36'], filament_ids: ['GFA00', 'GFG99'] }))],
     ['Metadata/plate_1.gcode', Buffer.from('G28\n')],
     ['Metadata/plate_1.gcode.md5', Buffer.from('ABC123')],
     ['Metadata/plate_1.json', Buffer.from(JSON.stringify({ bed_type: 'textured_plate' }))],
@@ -27,6 +28,14 @@ function slicedProject() {
 const fakeSlicer = () => ({
   calls: [],
   filamentIdsFor: () => ({ GFA00: 'Bambu PLA Basic @BBL H2D', GFG99: 'Generic PETG @BBL H2D' }),
+  resolve: () => ({
+    printer_model: 'Bambu Lab H2D', nozzle_diameter: ['0.4', '0.4'], extruder_type: ['Direct Drive', 'Direct Drive'],
+    extruder_variant_list: ['Direct Drive Standard,Direct Drive High Flow', 'Direct Drive Standard,Direct Drive High Flow'],
+    default_nozzle_volume_type: ['Standard', 'Standard'],
+    nozzle_type: ['hardened_steel', 'hardened_steel', 'hardened_steel', 'hardened_steel'], printer_extruder_id: ['1', '1', '2', '2'],
+  }),
+  machineFor: () => null,
+  processesFor: () => ({}),
   filamentsFor: () => ({ 'Bambu PLA Basic': 'Bambu PLA Basic @BBL H2D', 'Generic PETG': 'Generic PETG @BBL H2D' }),
   async slice(model, name, opts) {
     this.calls.push(opts);
@@ -230,4 +239,57 @@ test('two print starts at once: the second is refused instead of starting a seco
   release();
   await first;
   assert.equal(p.sent.filter((m) => m.print?.command === 'project_file').length, 1);
+});
+
+test('reads the installed hotends the way Bambu Studio does', () => {
+  const hotends = fakePrinter().hotends();
+  assert.deepEqual(hotends.map((h) => [h.id, h.code, h.diameter, h.flow, h.material]), [
+    [0, 'HH05', 0.4, 'High Flow', 'tungsten_carbide'],
+    [1, 'HH01', 0.4, 'High Flow', 'hardened_steel'],
+  ]);
+});
+
+test('slicing tells the slicer which hotends are installed, and what the part prints with', async () => {
+  const a = actionsFor(fakePrinter());
+  await a.slicePart({ model: { name: 'Part.3mf' }, slot: 'A3', upload: false }, ctx(), false);
+  const call = a.slicer.calls[0];
+  assert.deepEqual(call.machineOverrides.default_nozzle_volume_type, ['High Flow', 'High Flow']);
+  assert.deepEqual(call.machineOverrides.nozzle_diameter, ['0.4', '0.4']);
+  assert.deepEqual(call.machineOverrides.nozzle_type, ['tungsten_carbide', 'tungsten_carbide', 'hardened_steel', 'hardened_steel']);
+  assert.equal(call.hotend.id, 0);
+  assert.equal(call.hotend.flow, 'High Flow');
+});
+
+test('a hotend the connector does not recognise stops slicing and printing', async () => {
+  const report = require('./helpers').fixture('h2d-report.json');
+  report.print.device.nozzle.info[0].type = 'XZ99';
+  const p = fakePrinter({ report });
+  p.download = async () => slicedProject();
+  const a = actionsFor(p);
+  await assert.rejects(a.slicePart({ model: { name: 'Part.3mf' }, slot: 'A3', upload: false }, ctx(), false), /doesn't recognise/);
+  await assert.rejects(a.printFile({ path: '/job.gcode.3mf', slots: 'A3' }, ctx()), /not printing: .*recognises/);
+  assert.ok(!p.sent.some((m) => m.print?.command === 'project_file'));
+});
+
+test('a file sliced for a different hotend is not printed', async () => {
+  const p = fakePrinter();
+  p.download = async () => slicedProject({ flow: 'Standard' });
+  await assert.rejects(actionsFor(p).printFile({ path: '/job.gcode.3mf' }, ctx()),
+    /not printing: it was sliced for a 0.4 mm Standard hotend on nozzle 0, but a 0.4 mm High Flow hotend is installed/);
+  assert.ok(!p.sent.some((m) => m.print?.command === 'project_file'));
+});
+
+test('a file sliced for another printer is not printed', async () => {
+  const p = fakePrinter();
+  p.download = async () => slicedProject({ model: 'Bambu Lab X1 Carbon' });
+  await assert.rejects(actionsFor(p).printFile({ path: '/job.gcode.3mf', slots: 'A3' }, ctx()), /sliced for "Bambu Lab X1 Carbon"/);
+});
+
+test('a slot with a different material, or on the other nozzle, is not printed from', async () => {
+  const p = fakePrinter();
+  p.download = async () => slicedProject();
+  const a = actionsFor(p);
+  await assert.rejects(a.printFile({ path: '/job.gcode.3mf', slots: 'A2' }, ctx()), /A2 has PETG, filament 1 is PLA/);
+  await assert.rejects(a.printFile({ path: '/job.gcode.3mf', slots: 'B2' }, ctx()), /B2 feeds nozzle 1, filament 1 was sliced for nozzle 0/);
+  assert.ok(!p.sent.some((m) => m.print?.command === 'project_file'));
 });

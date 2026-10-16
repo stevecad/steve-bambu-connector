@@ -175,9 +175,11 @@ resumed / paused / finished / failed, new printer errors).
 - `config.json` holds the access code. `config*.json` and `data*/` are in `.gitignore`.
 - Bambu printers use self-signed certificates on the LAN, so the connector doesn't verify the printer's TLS
   certificate.
-- `print_part` and `print_file` start a print only when the printer is idle, one at a time. Every sliced file is
-  checked before use: it must be for this printer model, use its start G-code, and put the filament on the nozzle
-  its AMS slot feeds. (`send_gcode` and `send_command` do what they're told.) Safety interlocks belong to the printer.
+- The connector checks what's in the machine instead of assuming: it slices for the hotends the printer reports
+  (flow type, diameter, material) and refuses hotends it doesn't recognise. Before any print starts (`print_part`,
+  `print_file`, the panel), it checks the file is for this printer, was sliced for the hotends installed now, and that
+  each filament comes from a loaded slot with the same material on the right nozzle. Prints start only when the
+  printer is idle, one at a time. (`send_gcode` and `send_command` do what they're told.) Safety interlocks belong to the printer.
 
 ## Troubleshooting
 

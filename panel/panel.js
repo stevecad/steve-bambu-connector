@@ -118,7 +118,8 @@ function draw(s) {
 
   const nozzles = s.nozzles || [];
   const names = nozzles.length === 2 ? ['Right nozzle', 'Left nozzle'] : ['Nozzle'];
-  $('temps').innerHTML = nozzles.map((n, i) => temp(names[i] || `Nozzle ${n.id}`, n)).join('') +
+  // Name each nozzle with its hotend (e.g. "Right nozzle · High Flow"), so what's installed is visible.
+  $('temps').innerHTML = nozzles.map((n, i) => temp(`${names[i] || `Nozzle ${n.id}`}${n.flow ? ` · ${n.flow}` : ''}`, n)).join('') +
     temp('Bed', s.bed) + temp('Chamber', s.chamber);
 
   for (const b of $('speed').querySelectorAll('button')) b.classList.toggle('on', b.dataset.level === s.speed);
