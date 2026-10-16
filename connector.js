@@ -169,7 +169,10 @@ async function handleRun(message) {
   }
   steve.rememberRun(runId);
   const who = env.requested_by?.kind || 'someone';
-  log(`run ${runId}: ${env.action} by ${who}${env.note ? ` (${env.note})` : ''}`);
+  // Name the STEVE documents a run carries, so the log shows what was sliced or printed.
+  const docs = Object.values(env.inputs || {}).filter((v) => v && v.kind === 'file')
+    .map((v) => `"${v.name}" (${v.document} r${v.revision})`);
+  log(`run ${runId}: ${env.action} by ${who}${docs.length ? ` of ${docs.join(', ')}` : ''}${env.note ? ` (${env.note})` : ''}`);
   await steve.report(runId, { state: 'received' });
 
   const controller = new AbortController();
