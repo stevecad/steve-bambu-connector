@@ -76,7 +76,7 @@ startup message only.
 | During a print on the H2D, through STEVE: `print_speed` (silent/standard), `ledctrl` on both chamber lights, `M106 P2` aux fan, `set_nozzle_temp` (index 0), `set_bed_temp`, `gcode_line`, `pause` and `resume` are accepted and take effect (checked in the printer's report) | Verified on H2D |
 | A full print started by `project_file` (sliced for the installed High Flow hotend, AMS A → nozzle 0) runs, with the printer's own hotend check passing | Verified on H2D |
 | Idle H2D, through STEVE: `G28` homes; `select_extruder` 1 then 0 switches the active nozzle; `ams_change_filament` loads A3 into nozzle 0 and unloads it (it purged on the right nozzle: **index 0 is the right nozzle**); `set_ctt` is accepted; jog Z `+` lowers the bed and X `+` moves the head right | Verified on H2D (motion directions confirmed by the person watching) |
-| `stop` | From BambuStudio source; **not yet run on a printer** |
+| `stop` during a print's preparation, through STEVE: the job ends as `FAILED` with `print_error` `0300400C` (also what a stop on the printer's screen shows), and the printer turns its heaters off by itself within seconds | Verified on H2D |
 | X1/P1/A1 use `file:///sdcard/…` for `project_file`; P1/A1 camera on port 6000 | From ha-bambulab / OpenBambuAPI; **untested here** |
 
 When you verify something on a real printer, update this table and add a test with the captured reply.
