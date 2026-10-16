@@ -72,9 +72,9 @@ Pair it with STEVE:
 1. In STEVE: **Settings → Developers**, turn the API on; then **Settings → Connectors → Pair a connector**.
 2. `node connector.js --pair <CODE>`. It prints its key fingerprint.
 3. In STEVE, paste that fingerprint to confirm the connector.
-4. Allow the actions you want, and for each choose who may run it (you, the panel, the STEVE assistant, AI agents)
-   and whose runs ask you first. A sensible start: your own and the panel's runs go at once; AI runs that move,
-   heat or print ask you.
+4. Allow the actions, and let them run at once for the callers you use: you, **Its panel**, the STEVE assistant and
+   AI agents. Then "print this part", from a click or from an AI, just happens. (Each action can still be set to
+   ask you first, per caller, if you want a gate somewhere.)
 
 The connector publishes its panel itself when it starts (see The panel). With an AI agent that has STEVE's MCP tools
 and **Settings → Connectors → Let AI set up my connectors** on, the agent can also make the code, confirm the
@@ -122,7 +122,7 @@ yours, in that panel, and that only the open document goes. The panel shows a re
 | `name` | The connector's name in STEVE |
 | `printer.name`, `host`, `serial`, `access_code` | The printer. **The access code is a secret: keep this file private** |
 | `print_via` | `"direct"` (default; needs Developer Mode) or `"bambu_connect"` |
-| `confirm` | Actions that wait for a person on **every** run, whoever asks. Default `["send_gcode", "send_command", "delete_file"]`; `[]` for none |
+| `confirm` | Actions that wait for a person on **every** run, whoever asks. Default `[]` (none); e.g. `["send_gcode", "delete_file"]` to gate those |
 | `slicer.exe`, `slicer.profiles` | Bambu Studio's program and its `resources/profiles/BBL` folder, if not in the usual place |
 | `machine_profile` | Force a Bambu Studio machine profile, e.g. `"Bambu Lab X1 Carbon 0.4 nozzle"` |
 | `ffmpeg` | Path to ffmpeg, if it isn't on your PATH |

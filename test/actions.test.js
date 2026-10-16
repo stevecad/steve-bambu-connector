@@ -84,7 +84,7 @@ test('confirm marks exactly the configured actions', () => {
   const c = buildCatalog(single, { confirm: ['home'] });
   assert.deepEqual(c.actions.filter((a) => a.confirm).map((a) => a.name), ['home']);
   const d = buildCatalog(single);
-  assert.deepEqual(d.actions.filter((a) => a.confirm).map((a) => a.name).sort(), ['delete_file', 'send_command', 'send_gcode']);
+  assert.deepEqual(d.actions.filter((a) => a.confirm), [], 'nothing waits for a person by default');
 });
 
 test('AMS units map to nozzles (H2D: A feeds right, B feeds left)', () => {

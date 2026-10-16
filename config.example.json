@@ -9,10 +9,6 @@
   },
   "slicer": {},
   "ffmpeg": "ffmpeg",
-  "confirm": [
-    "send_gcode",
-    "send_command",
-    "delete_file"
-  ],
+  "confirm": [],
   "print_via": "direct"
 }

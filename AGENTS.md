@@ -75,8 +75,10 @@ When you verify something on a real printer, update this table and add a test wi
 
 ## Rules for changes
 
-- **Safety first.** Anything that starts a print checks the printer is idle (`readyToPrint`). Don't add ways to
-  start prints without either a preview path or an explicit API call. Interlocks belong to the printer.
+- **It should just work.** No approvals by default: `DEFAULT_CONFIRM` is empty and the README tells owners to let
+  runs go at once. Gates are opt-in (`confirm` in the config, or "asks first" per caller in STEVE).
+- **Safety without friction.** Anything that starts a print checks the printer is idle (`readyToPrint`); a run is
+  acted on once. Interlocks belong to the printer.
 - **Never bypass Bambu's authorization**: no signing with extracted keys, no driving `bambu_networking.dll`, no
   auto-clicking Bambu Connect. Direct control is for printers whose owner turned on Developer Mode.
 - **Act on each run once.** STEVE can deliver the same run in more than one message, each freshly signed, so the
