@@ -1,0 +1,53 @@
+{
+  "name": "steve-bambu-connector",
+  "version": "0.1.0",
+  "description": "STEVE connector for Bambu Lab printers: status, camera, controls, and slicing and printing STEVE parts over the local network.",
+  "main": "connector.js",
+  "type": "commonjs",
+  "private": true,
+  "scripts": {
+    "start": "node connector.js",
+    "setup": "node setup.js",
+    "discover": "node setup.js --discover",
+    "test": "node --test test/bambu.test.js test/actions.test.js test/steve.test.js test/files.test.js",
+    "check": "node --check connector.js && node --check setup.js && node --check lib/actions.js && node --check lib/bambu.js && node --check lib/bambuconnect.js && node --check lib/slicer.js && node --check lib/steve.js && node --check lib/zip.js && node --check lib/panel.js && node --check panel/panel.js"
+  },
+  "dependencies": {
+    "basic-ftp": "^5.0.5",
+    "mqtt": "^5.10.0"
+  },
+  "license": "MIT",
+  "author": "Robit Overlord",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevecad/steve-bambu-connector.git"
+  },
+  "homepage": "https://github.com/stevecad/steve-bambu-connector",
+  "bugs": {
+    "url": "https://github.com/stevecad/steve-bambu-connector/issues"
+  },
+  "keywords": [
+    "steve",
+    "bambu",
+    "bambulab",
+    "3d-printing",
+    "connector",
+    "mqtt"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "connector.js",
+    "setup.js",
+    "lib/",
+    "panel/",
+    "service/",
+    "config.example.json",
+    "start-connector.cmd",
+    "start-connector.sh",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE"
+  ]
+}

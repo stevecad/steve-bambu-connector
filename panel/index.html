@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printer</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<header>
+  <div>
+    <div class="name" id="name">Printer</div>
+    <div class="sub" id="sub">Connecting…</div>
+  </div>
+  <span class="pill" id="state">—</span>
+</header>
+
+<section class="card" id="job">
+  <div class="row"><span class="job-name" id="jobName">No job</span><span class="pct" id="pct"></span></div>
+  <div class="bar"><div id="barFill"></div></div>
+  <div class="row muted"><span id="layer"></span><span id="remain"></span></div>
+</section>
+
+<section class="card camera">
+  <img id="cam" alt="Camera">
+  <div class="cam-empty" id="camEmpty">No photo yet</div>
+  <button class="ghost small" id="btnSnap" data-action="snapshot">Take photo</button>
+</section>
+
+<section class="card" id="printCard" hidden>
+  <div class="row"><span class="label">This part</span><span class="muted" id="docInfo"></span></div>
+  <div class="form">
+    <label>Filament <select id="pSlot"></select></label>
+    <label>Quality <select id="pQuality"></select></label>
+    <label>Plate <select id="pPlate"></select></label>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="pSupports"> Supports</label>
+      <label class="check"><input type="checkbox" id="pOrient"> Lay flat</label>
+    </div>
+  </div>
+  <div class="buttons two">
+    <button id="btnStudio">Open in Bambu Studio</button>
+    <button id="btnSlice" class="primary">Slice &amp; preview</button>
+  </div>
+  <div class="muted hint" id="askHint" hidden>STEVE asks before sending this part. To skip that, in Settings → Connectors allow
+    these actions for Its panel with Runs at once and tick "Its panel may send the document open in STEVE without asking"
+    (or tick "Don't ask again" when you confirm).</div>
+  <div class="muted" id="printMsg"></div>
+  <div class="preview" id="preview" hidden>
+    <img id="plateImg" alt="Plate preview">
+    <div class="preview-info">
+      <div class="est" id="estimate"></div>
+      <div class="muted" id="estimateDetail"></div>
+      <div class="muted" id="bedNote">Check the bed is clear in the camera photo.</div>
+      <button id="btnPrintThis" class="primary">Print this</button>
+      <div class="muted" id="printNote" hidden></div>
+    </div>
+  </div>
+</section>
+
+<section class="temps" id="temps"></section>
+
+<section class="card">
+  <div class="buttons">
+    <button id="btnPause" data-action="pause">Pause</button>
+    <button id="btnResume" data-action="resume">Resume</button>
+    <button id="btnStop" class="danger" data-action="stop">Stop</button>
+  </div>
+  <div class="label">Speed</div>
+  <div class="seg" id="speed">
+    <button data-level="silent">Silent</button>
+    <button data-level="standard">Standard</button>
+    <button data-level="sport">Sport</button>
+    <button data-level="ludicrous">Ludicrous</button>
+  </div>
+  <div class="label">Light</div>
+  <div class="seg" id="light">
+    <button data-on="on">On</button>
+    <button data-on="off">Off</button>
+  </div>
+</section>
+
+<section class="card" id="amsCard">
+  <div class="label">Filament</div>
+  <div id="ams"></div>
+</section>
+
+<section class="card errors" id="errors" hidden></section>
+
+<footer id="msg"></footer>
+<script src="panel.js"></script>
+</body>
+</html>

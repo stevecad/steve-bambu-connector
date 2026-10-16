@@ -1,0 +1,74 @@
+{
+ "info": {
+  "command": "get_version",
+  "module": [
+   {
+    "name": "ota",
+    "product_name": "Bambu Lab H2D",
+    "sw_ver": "01.03.00.00",
+    "hw_ver": "N/A"
+   },
+   {
+    "name": "n3f/0",
+    "product_name": "AMS 2 Pro (1)",
+    "sw_ver": "04.00.21.87",
+    "hw_ver": "N3F05"
+   },
+   {
+    "name": "n3f/1",
+    "product_name": "AMS 2 Pro (2)",
+    "sw_ver": "04.00.21.87",
+    "hw_ver": "N3F05"
+   },
+   {
+    "name": "ahb",
+    "product_name": "",
+    "sw_ver": "02.04.11.98",
+    "hw_ver": "AHB03"
+   },
+   {
+    "name": "ixmj",
+    "product_name": "",
+    "sw_ver": "00.00.31.26",
+    "hw_ver": "N/A"
+   },
+   {
+    "name": "mc-sub",
+    "product_name": "",
+    "sw_ver": "00.00.00.00",
+    "hw_ver": "N/A"
+   },
+   {
+    "name": "th",
+    "product_name": "",
+    "sw_ver": "03.00.19.32",
+    "hw_ver": "TH08"
+   },
+   {
+    "name": "ext",
+    "product_name": "",
+    "sw_ver": "00.00.08.18",
+    "hw_ver": "EXT07"
+   },
+   {
+    "name": "smc",
+    "product_name": "",
+    "sw_ver": "04.00.13.57",
+    "hw_ver": "SMC09"
+   },
+   {
+    "name": "mc",
+    "product_name": "",
+    "sw_ver": "04.00.78.39",
+    "hw_ver": "MC09"
+   },
+   {
+    "name": "ap2",
+    "product_name": "",
+    "sw_ver": "00.00.31.26",
+    "hw_ver": "AP05"
+   }
+  ],
+  "sequence_id": "2"
+ }
+}

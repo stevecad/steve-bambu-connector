@@ -1,0 +1,6 @@
+node_modules/
+# Secrets and per-install state: the access code, the connector's private key, logs.
+config*.json
+!config.example.json
+data*/
+*.log

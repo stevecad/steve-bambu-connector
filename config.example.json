@@ -1,0 +1,18 @@
+{
+  "name": "Bambu Workshop P1S",
+  "steve_url": "https://stevecad.studio/connect/v1",
+  "printer": {
+    "name": "Workshop P1S",
+    "host": "192.168.0.50",
+    "serial": "PRINTER_SERIAL_NUMBER",
+    "access_code": "ACCESS_CODE_FROM_PRINTER_SCREEN"
+  },
+  "slicer": {},
+  "ffmpeg": "ffmpeg",
+  "confirm": [
+    "send_gcode",
+    "send_command",
+    "delete_file"
+  ],
+  "print_via": "direct"
+}
