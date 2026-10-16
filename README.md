@@ -111,7 +111,8 @@ Logs: `data/connector.log` (kept to 5 MB plus one older file).
 
 ## The panel
 
-`panel/` is a tab STEVE shows beside your design: progress, camera, temperatures, AMS filament, Pause / Resume /
+`panel/` is a tab STEVE shows beside your design: progress, camera (refreshing every 10 seconds while a print runs,
+with an Auto on/off switch), temperatures with each nozzle's hotend, AMS filament, Pause / Resume /
 Stop, speed, light, and a **This part** card: filament slot, quality, plate, supports, lay flat; **Open in Bambu
 Studio**; **Slice & preview**, then **Print this** (with Developer Mode) or **Print with Bambu Connect** (with
 `print_via: "bambu_connect"`).
@@ -152,7 +153,7 @@ Who may run what, and whose runs ask you first, is set per action and caller in 
 | Action | Does |
 | --- | --- |
 | `status` | The printer's state (and its raw report, if asked) |
-| `snapshot` | A camera photo (`camera.jpg`) |
+| `snapshot` | A camera photo (`camera.jpg`); `preview: true` for a smaller, lighter one |
 | `open_in_studio` | Opens the part in Bambu Studio on the connector's computer |
 | `slice_part` | Slices the part; returns the plate picture, time and filament; uploads it for `print_file` |
 | `print_file` | Prints a sliced `.gcode.3mf` on the printer (such as the one `slice_part` uploaded), matching filaments to AMS slots |

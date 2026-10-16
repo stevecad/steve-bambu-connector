@@ -24,7 +24,11 @@
 <section class="card camera">
   <img id="cam" alt="Camera">
   <div class="cam-empty" id="camEmpty">No photo yet</div>
-  <button class="ghost small" id="btnSnap" data-action="snapshot">Take photo</button>
+  <span class="live" id="liveBadge" hidden><span class="dot"></span>Live · <span id="camTime"></span></span>
+  <div class="cam-buttons">
+    <button class="ghost small" id="btnAuto" title="Refresh the photo every 10 seconds while printing">Auto on</button>
+    <button class="ghost small" id="btnSnap" data-action="snapshot">Take photo</button>
+  </div>
 </section>
 
 <section class="card" id="printCard" hidden>

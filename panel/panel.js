@@ -11,6 +11,10 @@ const defs = new Map();       // action name -> its definition (inputs)
 let doc = null;               // the STEVE document open now, when the panel may send it
 let sliced = null;            // the last slice_part result for this document: what "Print this" prints
 const ENDED = ['succeeded', 'failed', 'rejected', 'cancelled', 'expired'];
+// While a print runs and the panel is visible, the camera photo refreshes by itself (a smaller photo, every 10 s).
+const CAM_EVERY_MS = 10000;
+const PRINTING = ['RUNNING', 'PREPARE', 'PAUSE'];
+let autoCam = true;
 const PRINT_CARD = ['slice_part', 'open_in_studio', 'print_file', 'print_part'];
 const $ = (id) => document.getElementById(id);
 
@@ -137,6 +141,7 @@ function draw(s) {
   $('errors').innerHTML = errs.map(esc).join('<br>');
   fillSlots();
   refreshButtons();
+  refreshLive();
 }
 
 // ---- the open part: open in Bambu Studio, or slice, preview and print ----
@@ -290,14 +295,18 @@ function showRun(r) {
   const action = actionOf(r);
   if (ENDED.includes(r.state)) finished.add(r.id);
   if (PRINT_CARD.includes(action)) return showPrintRun(action, r);
+  const quiet = action === 'snapshot'; // photos speak for themselves; only their failures need words
   if (r.state === 'awaiting_confirmation') say('Waiting for you to confirm in STEVE');
   else if (r.state === 'failed' || r.state === 'rejected') say(r.error || r.message || `${action} failed`);
-  else if (r.message) say(r.message);
+  else if (r.message && !quiet) say(r.message);
   if (r.state === 'succeeded' && action === 'snapshot' && r.result?.photo) {
+    const takenAt = r.result.taken_at ? new Date(r.result.taken_at) : new Date();
     showRunFile(r.id, r.result.photo, $('cam')).then((ok) => {
       if (!ok) return;
       $('cam').classList.add('shown');
       $('camEmpty').hidden = true;
+      $('camTime').textContent = takenAt.toLocaleTimeString();
+      refreshLive();
     });
   }
   if (r.state === 'succeeded' && r.result?.status) draw(r.result.status);
@@ -347,6 +356,22 @@ $('btnStop').addEventListener('click', () => {
 $('btnPause').addEventListener('click', () => run('pause'));
 $('btnResume').addEventListener('click', () => run('resume'));
 $('btnSnap').addEventListener('click', () => run('snapshot'));
+$('btnAuto').addEventListener('click', () => { autoCam = !autoCam; refreshLive(); });
+
+function liveNow() {
+  return autoCam && status?.connected && PRINTING.includes(status.state) && allowed.has('snapshot');
+}
+
+function refreshLive() {
+  $('btnAuto').textContent = autoCam ? 'Auto on' : 'Auto off';
+  $('btnAuto').hidden = !allowed.has('snapshot');
+  $('liveBadge').hidden = !(liveNow() && $('camTime').textContent);
+}
+
+setInterval(() => {
+  if (!liveNow() || document.visibilityState !== 'visible' || busy.has('snapshot')) return;
+  run('snapshot', { preview: true });
+}, CAM_EVERY_MS);
 $('speed').addEventListener('click', (e) => { const l = e.target.dataset?.level; if (l) run('set_speed', { level: l }); });
 $('light').addEventListener('click', (e) => { const o = e.target.dataset?.on; if (o) run('set_light', { light: 'chamber', on: o === 'on' }); });
 
