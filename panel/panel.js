@@ -4,6 +4,8 @@
 let next = 0;
 const waiting = new Map();
 const busy = new Map();       // action name -> run id while a run is open
+const runActions = new Map(); // run id -> action name, for every run this panel started
+const finished = new Set();   // run ids whose end was already handled
 const allowed = new Set();
 const defs = new Map();       // action name -> its definition (inputs)
 let doc = null;               // the STEVE document open now, when the panel may send it
@@ -28,7 +30,7 @@ window.addEventListener('message', (event) => {
   } else if (message.event === 'event') {
     if (message.name === 'status') draw(message.data);
   } else if (message.event === 'run') {
-    showRun(message.run);
+    guarded(() => showRun(message.run));
   } else if (message.event === 'context') {
     applyTheme(message.context.theme);
     setDocument(message.context.document);
@@ -49,6 +51,22 @@ async function showRunFile(runId, name, img) {
     say(`Couldn't show ${name}: ${e.message || e}`);
     return false;
   }
+}
+
+// Runs a UI update and shows any error in the footer instead of failing silently.
+function guarded(fn) {
+  try { fn(); } catch (e) { say(`Panel error: ${e.message || e}`); }
+}
+
+// Follows a run until it ends, in case a pushed update is missed.
+function watchRun(id, action) {
+  const timer = setInterval(async () => {
+    if (finished.has(id) || busy.get(action) !== id) { clearInterval(timer); return; }
+    try {
+      const r = await call('run.get', { id });
+      guarded(() => showRun({ ...r, id }));
+    } catch {}
+  }, 2000);
 }
 
 function applyTheme(theme) {
@@ -232,7 +250,9 @@ async function run(action, inputs = {}) {
   try {
     const r = await call('run', { action, inputs });
     busy.set(action, r.id);
-    showRun({ ...r, action });
+    runActions.set(r.id, action);
+    guarded(() => showRun({ ...r, action }));
+    if (!ENDED.includes(r.state)) watchRun(r.id, action);
   } catch (e) {
     busy.delete(action);
     const text = e.code === 'caller_not_allowed' ? `"${action}" isn't allowed for this panel yet.` : e.message || String(e);
@@ -243,13 +263,16 @@ async function run(action, inputs = {}) {
 }
 
 function actionOf(r) {
+  if (runActions.has(r.id)) return runActions.get(r.id);
   if (r.action && busy.has(r.action)) return r.action;
   for (const [a, id] of busy) if (id === r.id) return a;
   return r.action;
 }
 
 function showRun(r) {
+  if (finished.has(r.id)) return; // its end was already shown (a push and a poll can both report it)
   const action = actionOf(r);
+  if (ENDED.includes(r.state)) finished.add(r.id);
   if (PRINT_CARD.includes(action)) return showPrintRun(action, r);
   if (r.state === 'awaiting_confirmation') say('Waiting for you to confirm in STEVE');
   else if (r.state === 'failed' || r.state === 'rejected') say(r.error || r.message || `${action} failed`);
