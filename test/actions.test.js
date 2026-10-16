@@ -293,3 +293,16 @@ test('a slot with a different material, or on the other nozzle, is not printed f
   await assert.rejects(a.printFile({ path: '/job.gcode.3mf', slots: 'B2' }, ctx()), /B2 feeds nozzle 1, filament 1 was sliced for nozzle 0/);
   assert.ok(!p.sent.some((m) => m.print?.command === 'project_file'));
 });
+
+test('actions that move or heat the machine tell an AI agent how to run them safely', () => {
+  const c = buildCatalog(fakePrinter().capabilities(), { qualities: { '0.20mm Standard': 'x' }, studio: true });
+  const d = (name) => c.actions.find((a) => a.name === name).description;
+  for (const name of ['home', 'move', 'select_nozzle', 'load_filament', 'unload_filament', 'set_temperature']) {
+    assert.match(d(name), /tell the person what will move or heat/, name);
+    assert.match(d(name), /snapshot/, name);
+  }
+  assert.match(d('move'), /parked at the back by the purge chute and wiper/);
+  assert.match(d('move'), /Z \+ lowers the bed/);
+  for (const name of ['print_file', 'print_part']) assert.match(d(name), /empty bed/, name);
+  for (const name of ['send_gcode', 'send_command']) assert.match(d(name), /bypassing every check/, name);
+});

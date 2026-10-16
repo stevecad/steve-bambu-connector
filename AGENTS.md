@@ -75,7 +75,8 @@ startup message only.
 | `project_file` payload for H2-series (`ftp:///` url, `ams_mapping`/`ams_mapping2`, `nozzle_offset_cali`, …) | Verified on H2D 01.03.00.00 with Developer Mode (early tests failed only because of the slicer bugs above, since fixed) |
 | During a print on the H2D, through STEVE: `print_speed` (silent/standard), `ledctrl` on both chamber lights, `M106 P2` aux fan, `set_nozzle_temp` (index 0), `set_bed_temp`, `gcode_line`, `pause` and `resume` are accepted and take effect (checked in the printer's report) | Verified on H2D |
 | A full print started by `project_file` (sliced for the installed High Flow hotend, AMS A → nozzle 0) runs, with the printer's own hotend check passing | Verified on H2D |
-| `set_ctt`, `select_extruder`, `ams_change_filament`, homing/jogging G-code, `stop` | From BambuStudio source; **not yet run on a printer** |
+| Idle H2D, through STEVE: `G28` homes; `select_extruder` 1 then 0 switches the active nozzle; `ams_change_filament` loads A3 into nozzle 0 and unloads it (it purged on the right nozzle: **index 0 is the right nozzle**); `set_ctt` is accepted; jog Z `+` lowers the bed and X `+` moves the head right | Verified on H2D (motion directions confirmed by the person watching) |
+| `stop` | From BambuStudio source; **not yet run on a printer** |
 | X1/P1/A1 use `file:///sdcard/…` for `project_file`; P1/A1 camera on port 6000 | From ha-bambulab / OpenBambuAPI; **untested here** |
 
 When you verify something on a real printer, update this table and add a test with the captured reply.
@@ -97,6 +98,12 @@ When you verify something on a real printer, update this table and add a test wi
 - **Check what's in the machine, never assume.** Slice for the hotends the printer reports (`Printer.hotends`,
   `Actions.hotendOverrides`), refuse unknown hotend codes, and run `Actions.verifyPrint` before every print: printer
   model, each nozzle's hotend (flow and diameter), and each filament's slot (loaded, same material, feeds that nozzle).
+- **Action descriptions are the AI's operating manual.** Agents using STEVE's MCP tools read each action's description
+  (`list_actions`) before running it. Every action that moves or heats the machine says what physically happens, what
+  to check first (a fresh snapshot: empty bed, no hands inside) and to tell the person what will move and what to watch
+  before sending it (`WATCH` in `lib/actions.js`). Keep that guidance when you change an action; a test checks it.
+  The printer doesn't report the toolhead position: after homing the head parks at the back by the purge chute and
+  wiper, so it must come forward into the open print area before any X move.
 - **One print start at a time, and cancel means cancel.** `Actions.exclusive` serializes print starts;
   `stopIfCancelled` runs before each step and right before `project_file`. A restart mid-run reports the run
   failed (`runState` "accepted") instead of repeating it.
