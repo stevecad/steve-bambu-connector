@@ -76,3 +76,12 @@ test('refuses to send while disconnected', async () => {
   p.connected = false;
   await assert.rejects(p.command({ print: { command: 'pause' } }), /not connected/);
 });
+
+test('status shows the active nozzle and which slot is loaded in each', () => {
+  const report = fixture('h2d-report.json');
+  report.print.device.extruder.state = 2; // two nozzles, nozzle 0 active (as reported while printing)
+  report.print.device.extruder.info[0].snow = 2; // AMS A, slot index 2 -> A3
+  report.print.device.extruder.info[1].snow = 65279; // nothing
+  const s = fakePrinter({ report }).summary();
+  assert.deepEqual(s.nozzles.map((n) => [n.id, n.active, n.loaded]), [[0, true, 'A3'], [1, false, null]]);
+});
