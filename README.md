@@ -1,5 +1,24 @@
 # steve-bambu-connector
 
+> [!CAUTION]
+> # ⚠️ EXPERIMENTAL SOFTWARE ⚠️
+>
+> **This connects AI and remote software to a real 3D printer. It is experimental, incomplete and tested on very few
+> printers (mainly one Bambu Lab H2D) by its author. It can be wrong, and a printer that heats, moves or prints when
+> nobody expects it can damage itself, start a fire, or hurt someone.**
+>
+> - **You are responsible** for making sure it works correctly with your printer and your setup, and for everything
+>   it does. Use it at your own risk. There is no warranty of any kind (see [LICENSE](LICENSE)).
+> - **By default nothing asks for approval**: anyone you allow in STEVE, AI agents included, can start prints, heat
+>   the nozzles, bed and chamber, home and move the toolhead, load filament, and send raw G-code or printer commands
+>   that bypass every check this connector makes. Allow only what you want, and add approvals (STEVE's
+>   permissions, or `confirm` in `config.json`) for anything you want to see first.
+> - **Never leave a printer heating or printing unattended** because software started it. Check the bed is clear
+>   and nobody is reaching inside before anything moves or heats.
+> - **The printer's own safety features stay in charge.** This software does not replace or bypass them, and must
+>   never be used to.
+> - Printer facts here (nozzles, AMS slots, MQTT fields, error codes) were found on few printers. Yours may differ.
+
 A [STEVE](https://stevecad.studio) connector for Bambu Lab printers on your local network. From STEVE (a panel beside
 your design, **File → Run an action**, the STEVE assistant, or AI agents over MCP) you can:
 

@@ -3,6 +3,9 @@
 Guidance for AI agents (and people) working on **steve-bambu-connector**: a STEVE connector that lets STEVE see and
 control a Bambu Lab printer on the local network, and print the part open in STEVE.
 
+**This is experimental software** (see the warning at the top of the README). Whoever runs it is responsible for
+making sure it works correctly with their printer. Keep that warning in the README, and never weaken it.
+
 ## What it is
 
 A small Node.js program (CommonJS, Node 18+, two dependencies: `mqtt`, `basic-ftp`) that runs on a computer next to
