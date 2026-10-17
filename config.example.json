@@ -9,6 +9,5 @@
   },
   "slicer": {},
   "ffmpeg": "ffmpeg",
-  "confirm": [],
   "print_via": "direct"
 }

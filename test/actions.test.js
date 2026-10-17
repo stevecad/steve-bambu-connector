@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { Actions, buildCatalog } = require('../lib/actions');
+const { Actions, buildCatalog, DEFAULT_CONFIRM } = require('../lib/actions');
 const { writeZip } = require('../lib/zip');
 const { fakePrinter, refuse } = require('./helpers');
 
@@ -89,11 +89,22 @@ test('slicing and Bambu Studio actions appear only when available', () => {
   assert.ok(all.includes('slice_part') && all.includes('print_part') && all.includes('open_in_studio'));
 });
 
-test('confirm marks exactly the configured actions', () => {
+test('by default a person confirms everything that moves the printer, and nothing else', () => {
+  const moves = ['home', 'move', 'select_nozzle', 'load_filament', 'unload_filament', 'print_file', 'print_part',
+    'pause', 'resume', 'stop', 'send_gcode', 'send_command'];
+  assert.deepEqual([...DEFAULT_CONFIRM].sort(), [...moves].sort());
+  for (const caps of [single, { ...single, model: 'Bambu Lab H2D', dual: true, chamberHeater: true }]) {
+    const all = buildCatalog(caps, { qualities: { '0.20mm Standard': 'x' }, studio: true }).actions;
+    for (const a of all) assert.equal(Boolean(a.confirm), moves.includes(a.name), `${a.name} on ${caps.model}`);
+    assert.ok(all.some((a) => a.name === 'print_part' && a.confirm), 'printing waits for a person');
+  }
+});
+
+test('a confirm list in the config replaces the default', () => {
   const c = buildCatalog(single, { confirm: ['home'] });
   assert.deepEqual(c.actions.filter((a) => a.confirm).map((a) => a.name), ['home']);
-  const d = buildCatalog(single);
-  assert.deepEqual(d.actions.filter((a) => a.confirm), [], 'nothing waits for a person by default');
+  const none = buildCatalog(single, { confirm: [] });
+  assert.deepEqual(none.actions.filter((a) => a.confirm), [], 'an owner can choose no confirmations');
 });
 
 test('AMS units map to nozzles (H2D: A feeds right, B feeds left)', () => {

@@ -86,8 +86,10 @@ When you verify something on a real printer, update this table and add a test wi
 
 ## Rules for changes
 
-- **It should just work.** No approvals by default: `DEFAULT_CONFIRM` is empty and the README tells owners to let
-  runs go at once. Gates are opt-in (`confirm` in the config, or "asks first" per caller in STEVE).
+- **A person confirms everything that moves the printer, by default.** `DEFAULT_CONFIRM` lists every action that
+  moves it (pause and stop park the head) and the raw commands; a new action that moves the printer goes in that
+  list. Owners may loosen it (`confirm` in their config, or per action in STEVE), but it never ships loosened.
+  Everything else (status, photos, slicing, files, heating, fans, light) should just work.
 - **Safety without friction.** Anything that starts a print checks the printer is idle (`readyToPrint`); a run is
   acted on once. Interlocks belong to the printer.
 - **Never bypass Bambu's authorization**: no signing with extracted keys, no driving `bambu_networking.dll`, no

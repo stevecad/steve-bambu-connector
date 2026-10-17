@@ -9,10 +9,11 @@
 >
 > - **You are responsible** for making sure it works correctly with your printer and your setup, and for everything
 >   it does. Use it at your own risk. There is no warranty of any kind (see [LICENSE](LICENSE)).
-> - **By default nothing asks for approval**: anyone you allow in STEVE, AI agents included, can start prints, heat
->   the nozzles, bed and chamber, home and move the toolhead, load filament, and send raw G-code or printer commands
->   that bypass every check this connector makes. Allow only what you want, and add approvals (STEVE's
->   permissions, or `confirm` in `config.json`) for anything you want to see first.
+> - **Everything that moves the printer waits for a person to confirm by default**: starting, pausing, resuming and
+>   stopping prints, homing, jogging, switching nozzles, loading and unloading filament, and raw G-code and printer
+>   commands (which bypass every check this connector makes). Heating, fans, light and speed don't ask. You can
+>   change this (`confirm` in `config.json`, or per action in STEVE); if you remove the confirmations, anyone you
+>   allow in STEVE, AI agents included, can move and heat your printer without you.
 > - **Never leave a printer heating or printing unattended** because software started it. Check the bed is clear
 >   and nobody is reaching inside before anything moves or heats.
 > - **The printer's own safety features stay in charge.** This software does not replace or bypass them, and must
@@ -96,9 +97,9 @@ Pair it with STEVE:
 2. `node connector.js --pair <CODE>`. It connects to the printer first (it gives up after two minutes if the printer
    doesn't answer, so the code isn't wasted), then prints its key fingerprint.
 3. In STEVE, paste that fingerprint to confirm the connector.
-4. Allow the actions, and let them run at once for the callers you use: you, **Its panel**, the STEVE assistant and
-   AI agents. Then "print this part", from a click or from an AI, just happens. (Each action can still be set to
-   ask you first, per caller, if you want a gate somewhere.)
+4. Allow the actions for the callers you use: you, **Its panel**, the STEVE assistant and AI agents. Everything that
+   moves the printer still waits for you to confirm each run in STEVE (see `confirm` below); the rest (status,
+   photos, slicing, files, heating, fans, light) runs at once.
 
 The connector publishes its panel itself when it starts (see The panel). With an AI agent that has STEVE's MCP tools
 and **Settings → Connectors → Let AI set up my connectors** on, the agent can also make the code, confirm the
@@ -155,7 +156,7 @@ yours, in that panel, and that only the open document goes. The panel shows a re
 | `name` | The connector's name in STEVE, sent when pairing (rename it in STEVE afterwards) |
 | `printer.name`, `host`, `serial`, `access_code` | The printer. **The access code is a secret: keep this file private.** `printer.name` is optional |
 | `print_via` | `"direct"` (default; needs Developer Mode) or `"bambu_connect"` |
-| `confirm` | Actions that wait for a person on **every** run, whoever asks. Default `[]` (none); e.g. `["send_gcode", "delete_file"]` to gate those |
+| `confirm` | Actions that wait for a person on **every** run, whoever asks. Default (when left out): everything that moves the printer, `["home", "move", "select_nozzle", "load_filament", "unload_filament", "print_file", "print_part", "pause", "resume", "stop", "send_gcode", "send_command"]`. A list here replaces the default; `[]` lets every run go at once, at your own risk |
 | `slicer.exe`, `slicer.profiles` | Bambu Studio's program and its `resources/profiles/BBL` folder, if not in the usual place |
 | `machine_profile` | Force a Bambu Studio machine profile, e.g. `"Bambu Lab X1 Carbon 0.4 nozzle"` |
 | `ffmpeg` | Path to ffmpeg, if it isn't on your PATH (or the service's) |
